@@ -5,11 +5,18 @@ from functools import wraps
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
+import asyncio
 
 class Klatnscope_crawler(Crawler):
 
     def __init__(self):
         super().__init__()
+        
+        self.chain = "klaytn"
+        
+    def main(self,token_list) :
+    
+        asyncio.run(self.set_token_info(token_list))
         
     def retry(method):
         @wraps(method)
@@ -22,94 +29,159 @@ class Klatnscope_crawler(Crawler):
                     return method(self, *args)
                 except :
                     if i == self.retries - 1:
-                        raise
+                        return None
 
         return retry_method
+            
+    async def set_token_info(self,token_list) :
         
-    def main(self,token_list) :
+        self.tokens = self.set_tokens()
+        
+        new_token_list = self.check_token_copy(token_list)
+        
+        n = 0
+        
+        for token in new_token_list :
+            
+            n += 1
+            
+            self.token = token
+            
+            tokenDict = await self.parse_token_info()
+            self.tokens.update({self.token : tokenDict})
+            
+            self.save_token(self.tokens)
+            
+            if n > 10 :
+                break
     
-        result = self.get_token_info(token_list)
+    async def parse_token_info(self) :
+        """scroll down token list
+            "MOOI" : {
+                "id" : 1,
+                "name" : "MOOI",
+                "symbol" : "MOOI",
+                "contract" : "0x4b734a4d5bf19d89456ab975dfb75f02762dda1d",
+                "decimal" : 18,
+                "info" : false
+            },
+        """
+        
+        # result = {}
+        
+        # for token in token_list :
+            
+        await self.load_token_info()
+        
+        check = await self.check_token_info()
+        
+        if not check :
+            return self.safe_token()
+            
+        result = await asyncio.gather(self.get_token_name(),
+                                      self.get_token_symbol(),
+                                      self.get_token_contract(),
+                                      self.get_token_detail(),
+                                      self.get_token_image()
+                                      )
         
         return result
-    
-    def get_token_info(self,token_list) :
-        """scroll down token list"""
-        
-        result = []
-        
-        for token in token_list :
-            
-            self.load_token_info(token)
-            
-            token_detail = self.get_token_detail()
-            token_image = self.get_token_image(token)
-            token_name = self.get_token_name()
-            token_symbol = self.get_token_symbol()
-            token_contract = self.get_token_contract()
-            
-            result.append((token_detail,token_image,token_name,token_symbol,token_contract))
-            
-        return result
-    
-    @retry
-    def load_token_info(self,token) :
 
-        tokenPage = f'https://scope.klaytn.com/search/tokens-nft-account?key={token}'
+        # tokenDict = {
+            
+        #     "name" : result[0],
+        #     "symbol" : result[1],
+        #     "contract" : {
+        #         self.chain : result[2]
+        #     },
+        #     "detail" : result[3],
+            
+        # }
+            
+        # token = self.deep_extend(self.safe_token(), tokenDict)
+
+        # return token
+    
+    async def load_token_info(self) :
+
+        tokenPage = f'https://scope.klaytn.com/search/tokens-nft-account?key={self.token}'
         
-        self.driver.get(tokenPage)
+        await self.driver.get(tokenPage)
         
-    @retry
-    def get_token_detail(self) :
+    async def check_token_info(self) :
         
-        elem = self.wait.until(EC.presence_of_element_located((By.XPATH, f"//div[@class='Table__tbody']/div/div[1]//a[@href]")))
+        try :
+            for i in range(1,10) :
+                
+                self.i = i
+                
+                token_symbol = await self.get_token_symbol()
+                
+                if self.token == token_symbol :
+                    break
+
+            if self.token == token_symbol :
+                return True
+            else :
+                return False
+        except :
+            return False
+        
+    def check_token_copy(self,token_list) :
+        
+        tokens = self.set_tokens()
+        
+        tokens_list = list(tokens.keys())
+        
+        new_token_list = list(set(token_list) - set(tokens_list))
+        
+        return new_token_list
+        
+    async def get_token_detail(self) :
+        
+        elem = await self.wait.until(EC.presence_of_element_located((By.XPATH, f"//div[@class='Table__tbody']/div/div[{self.i}]//a[@href]")))
         
         token_detail = elem.get_attribute("href")
         
         return token_detail
     
-    @retry
-    def get_token_image(self,token) :
+    async def get_token_image(self) :
         
-        elem = self.wait.until(EC.presence_of_element_located((By.XPATH, f"//div[@class='Table__tbody']/div/div[1]//img[@src]")))
+        elem = await self.wait.until(EC.presence_of_element_located((By.XPATH, f"//div[@class='Table__tbody']/div/div[{self.i}]//img[@src]")))
         
         token_image = elem.get_attribute("src")
         
-        with open(f'{token}.png', 'wb') as file:
-            file.write(token_image.screenshot_as_png)
+        self.driver.get(token_image)
         
-        return token_image
-    
-    @retry
-    def get_token_name(self) :
+        self.driver.save_screenshot(f"asset/{self.chain}/{self.token}.png")
+
+    async def get_token_name(self) :
         
-        elem = self.wait.until(EC.presence_of_element_located((By.XPATH, f"//div[@class='Table__tbody']/div/div[1]//div[1]//span[@class='ValueWithKeyword--highlighted']")))
+        elem = await self.wait.until(EC.presence_of_element_located((By.XPATH, f"//div[@class='Table__tbody']/div/div[{self.i}]//div[1]//span[@class='ValueWithKeyword--highlighted']")))
         
         token_name = elem.get_attribute("innerText")
              
         return token_name
     
-    @retry
-    def get_token_symbol(self) :
+    async def get_token_symbol(self) :
         
-        elem = self.wait.until(EC.presence_of_element_located((By.XPATH, f"//div[@class='Table__tbody']/div/div[1]//div[2]//span[@class='ValueWithKeyword--highlighted']")))
+        elem = await self.wait.until(EC.presence_of_element_located((By.XPATH, f"//div[@class='Table__tbody']/div/div[{self.i}]//div[2]//span[@class='ValueWithKeyword--highlighted']")))
         
         token_symbol = elem.get_attribute("innerText")
              
         return token_symbol
     
-    @retry
-    def get_token_contract(self) :
+    async def get_token_contract(self) :
         
-        elem = self.wait.until(EC.presence_of_element_located((By.XPATH, f"//div[@class='Table__tbody']/div/div[1]//div[3]")))
+        elem = await self.wait.until(EC.presence_of_element_located((By.XPATH, f"//div[@class='Table__tbody']/div/div[{self.i}]//div[3]")))
         
         token_contract = elem.get_attribute("innerText")
              
         return token_contract
     
-    @retry
-    def get_token_contract(self) :
+    async def get_token_contract(self) :
         
-        elem = self.wait.until(EC.presence_of_element_located((By.XPATH, f"//div[@class='Table__tbody']/div/div[1]//div[3]")))
+        elem = await self.wait.until(EC.presence_of_element_located((By.XPATH, f"//div[@class='Table__tbody']/div/div[{self.i}]//div[3]")))
         
         token_contract = elem.get_attribute("innerText")
              
