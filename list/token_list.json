@@ -1,5 +1,10 @@
 {
-    "REDi": {},
+    "REDi": {
+        "name": null,
+        "symbol": null,
+        "contract": null,
+        "detail": null
+    },
     "TINDER": {
         "name": "TINDER",
         "symbol": "TINDER",
@@ -40,7 +45,12 @@
         },
         "detail": "https://scope.klaytn.com/token/0x79bb4d71f6c168531a259dd6d40a8d5de5a34427"
     },
-    "HALF": {},
+    "HALF": {
+        "name": null,
+        "symbol": null,
+        "contract": null,
+        "detail": null
+    },
     "WRS": {
         "name": "WRS",
         "symbol": "WRS",
@@ -72,11 +82,5 @@
             "klaytn": "0x968d93a44b3ef61168ca621a59ddc0e56583e592"
         },
         "detail": "https://scope.klaytn.com/token/0x968d93a44b3ef61168ca621a59ddc0e56583e592"
-    },
-    "wemix": {
-        "name": null,
-        "symbol": null,
-        "contract": null,
-        "detail": null
     }
 }
