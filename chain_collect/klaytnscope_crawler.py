@@ -38,6 +38,8 @@ class Klatnscope_crawler(Crawler):
         
         self.tokens = self.set_tokens()
         
+        print(self.tokens)
+        
         new_token_list = self.check_token_copy(token_list)
         
         n = 0
@@ -144,9 +146,11 @@ class Klatnscope_crawler(Crawler):
         
         tokens = self.set_tokens()
         
-        tokens_list = list(tokens.keys())
+        old_token_list = list(tokens.keys())
         
-        new_token_list = list(set(tokens_list) - set(token_list))
+        new_token_list = list(set(token_list) - set(old_token_list))
+        
+        print(f"new token : {new_token_list}")
         
         return new_token_list
         

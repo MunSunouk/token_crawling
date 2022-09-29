@@ -5,11 +5,13 @@ import os
 if __name__ == "__main__" :
     
     #test
-    token_list = ['wemix']
+    # token_list = ['wemix']
     
-    # klayswap_crawler = Klayswap_crawler()
+    klayswap_crawler = Klayswap_crawler()
     
-    # token_list = klayswap_crawler.main()
+    token_list = klayswap_crawler.main()
+    
+    print(token_list)
     
     klaytnscope = Klatnscope_crawler()
     
